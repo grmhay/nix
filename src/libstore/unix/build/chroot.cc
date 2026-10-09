@@ -25,6 +25,18 @@ std::pair<std::filesystem::path, AutoDelete> setupBuildChroot(const BuildChrootP
 
     createDir(chrootParentDir, 0700);
 
+    /* After pivot_root(), kernel filesystems never walk through
+       chrootParentDir again, but path-based FUSE filesystems (such
+       as mergerfs) re-resolve the full host path as the calling
+       user. Let the build user, and only the build user, traverse
+       (but not list or modify) this directory, otherwise every
+       access inside the sandbox fails with ENOENT. The group is not
+       used because build users usually share one group. */
+    if (params.buildUser) {
+        chown(chrootParentDir, params.buildUser->getUID(), 0);
+        chmod(chrootParentDir, 0100);
+    }
+
     std::filesystem::path chrootRootDir = chrootParentDir / "root";
 
     createDir(chrootRootDir, params.buildUser && params.buildUser->getUIDCount() != 1 ? 0755 : 0750);

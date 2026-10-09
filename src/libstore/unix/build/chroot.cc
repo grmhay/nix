@@ -30,10 +30,13 @@ std::pair<std::filesystem::path, AutoDelete> setupBuildChroot(const BuildChrootP
        as mergerfs) re-resolve the full host path as the calling
        user. Let the build user, and only the build user, traverse
        (but not list or modify) this directory, otherwise every
-       access inside the sandbox fails with ENOENT. The group is not
-       used because build users usually share one group. */
+       access inside the sandbox fails with ENOENT. The group gets
+       no permissions because build users usually share one group,
+       but it must be the build group: both owner and group have to
+       be mapped in the builder's user namespace for its capabilities
+       to apply while it sets up the chroot. */
     if (params.buildUser) {
-        chown(chrootParentDir, params.buildUser->getUID(), 0);
+        chown(chrootParentDir, params.buildUser->getUID(), params.buildUser->getGID());
         chmod(chrootParentDir, 0100);
     }
 
